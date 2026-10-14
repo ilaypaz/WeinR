@@ -1,15 +1,40 @@
 #' Average Q-score histogram (with mean/median lines)
 #'
-#' Produces a histogram of per-read mean Phred Q-scores with vertical lines for
-#' mean (dashed) and median (solid).
+#' Produces a histogram of per-read mean Phred Q-scores from a BAM file.
 #'
-#' @param meanprQscore Numeric vector/list of per-read mean Phred Q-scores.
+#' @param meanprQscore BAM file path or numeric vector/list of per-read mean Phred Q-scores.
 #' @param avgQScore Optional numeric scalar. If provided, used as the mean line
 #'   instead of computing the mean from `meanprQscore`.
+#' @param file_name Character title for the plot.
 #'
 #' @return A ggplot object, or NULL if no finite Q-scores are available.
 #' @keywords internal
 make_quality_plot <- function(meanprQscore, avgQScore = NULL, file_name) {
+  
+  if (base::length(meanprQscore) == 1L &&
+      base::is.character(meanprQscore) &&
+      base::grepl("\\.bam$", meanprQscore, ignore.case = TRUE)) {
+    
+    bam_data <- Rsamtools::scanBam(
+      meanprQscore,
+      param = Rsamtools::ScanBamParam(
+        what = "qual"
+      )
+    )
+    
+    qualities <- as.character(bam_data[[1]]$qual)
+    
+    meanprQscore <- vapply(
+      qualities,
+      function(x) {
+        if (base::is.na(x) || x == "") {
+          return(NA_real_)
+        }
+        base::mean(utf8ToInt(x) - 33)
+      },
+      numeric(1)
+    )
+  }
   
   meanprQscore <- as.numeric(base::unlist(meanprQscore, use.names = FALSE))
   meanprQscore <- meanprQscore[base::is.finite(meanprQscore)]
@@ -18,7 +43,6 @@ make_quality_plot <- function(meanprQscore, avgQScore = NULL, file_name) {
     return(NULL)
   }
   
-  # Compute statistics
   mean_q <- if (!base::is.null(avgQScore)) {
     as.numeric(avgQScore)[1L]
   } else {
@@ -31,65 +55,55 @@ make_quality_plot <- function(meanprQscore, avgQScore = NULL, file_name) {
     data = data.frame(meanprQscore = meanprQscore),
     ggplot2::aes(x = meanprQscore)
   ) +
-    
-    # Histogram
     ggplot2::geom_histogram(
       bins = 40,
       fill = "#8FBCBB",
       color = "white",
       alpha = 0.8
     ) +
-    
-    # Mean line
     ggplot2::geom_vline(
       xintercept = mean_q,
       color = "#BF616A",
       linetype = "dashed",
       linewidth = 1.5
     ) +
-    
-    # Median line
     ggplot2::geom_vline(
       xintercept = median_q,
       color = "#0072B2",
       linetype = "solid",
       linewidth = 1.5
     ) +
-    
     ggplot2::scale_x_continuous(
       expand = c(0, 0),
       breaks = scales::pretty_breaks(n = 10)
     ) +
-    
     ggplot2::scale_y_continuous(
       limits = c(0, NA),
       expand = c(0, 0),
       breaks = scales::pretty_breaks(n = 8)
     ) +
-    
     ggplot2::labs(
       x = "Average Phred Q-Score",
       y = "Read Count",
       title = file_name
     ) +
-    
     ggplot2::theme_minimal(base_size = 15) +
     ggplot2::theme(
       panel.grid.major.x = ggplot2::element_blank(),
       panel.grid.minor.x = ggplot2::element_blank(),
       panel.grid.major.y = ggplot2::element_blank(),
       panel.grid.minor.y = ggplot2::element_blank(),
-      
-      axis.line  = ggplot2::element_line(color = "black", linewidth = 0.6),
+      axis.line = ggplot2::element_line(color = "black", linewidth = 0.6),
       axis.ticks = ggplot2::element_line(color = "black", linewidth = 0.6),
-      
       plot.title = ggplot2::element_text(face = "bold", hjust = 0),
-      
       legend.position = "none",
-      
-      plot.background  = ggplot2::element_blank(),
+      plot.background = ggplot2::element_blank(),
       panel.background = ggplot2::element_blank(),
-      
       plot.margin = ggplot2::margin(12, 15, 15, 15)
     )
 }
+
+make_quality_plot(
+  "/Users/ilaypaz/Downloads/capstone/PBM60157_1pct.bam",
+  file_name = "PBM60157_1pct Average Q-Score"
+)
