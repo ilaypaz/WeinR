@@ -1,3 +1,43 @@
+library(ggplot2)
+library(Rsamtools)
+library(data.table)
+
+bam_file <- "/Users/ilaypaz/Downloads/capstone/PBM60157_1pct.bam"
+
+bam_data <- scanBam(
+  bam_file,
+  param = ScanBamParam(
+    what = c("seq", "qual")
+  )
+)
+
+sequences <- as.character(bam_data[[1]]$seq)
+qualities <- as.character(bam_data[[1]]$qual)
+
+max_length <- max(nchar(sequences), na.rm = TRUE)
+
+perPosQuality <- data.frame(
+  position = seq_len(max_length),
+  mean = NA_real_,
+  median = NA_real_,
+  q25 = NA_real_,
+  q75 = NA_real_
+)
+
+for (i in seq_len(max_length)) {
+  position_qualities <- unlist(lapply(
+    qualities[nchar(sequences) >= i],
+    function(x) {
+      utf8ToInt(substr(x, i, i)) - 33
+    }
+  ))
+  
+  perPosQuality$mean[i] <- mean(position_qualities, na.rm = TRUE)
+  perPosQuality$median[i] <- median(position_qualities, na.rm = TRUE)
+  perPosQuality$q25[i] <- quantile(position_qualities, 0.25, na.rm = TRUE)
+  perPosQuality$q75[i] <- quantile(position_qualities, 0.75, na.rm = TRUE)
+}
+
 #' Per-position quality plot (no binning)
 #'
 #' Applies rolling-mean smoothing (±2500 positions) to each quantile curve
@@ -10,7 +50,6 @@
 #' @keywords internal
 make_per_position_plot <- function(perPosQuality, file_name) {
   
-  # ---- Input checks ----
   if (base::is.null(perPosQuality) || base::nrow(perPosQuality) == 0L) {
     return(NULL)
   }
@@ -20,25 +59,20 @@ make_per_position_plot <- function(perPosQuality, file_name) {
     stop("`perPosQuality` must contain columns: position, mean, median, q25, q75.")
   }
   
-  # ---- Order by position ----
   df <- perPosQuality[base::order(perPosQuality$position), , drop = FALSE]
   
-  # ---- Rolling smoothing (±2500 positions) ----
   half_window <- 2500L
-  k <- 2L * half_window + 1L  # 5001
-  
+  k <- 2L * half_window + 1L
   
   if (base::nrow(df) > k) {
     dt <- data.table::as.data.table(df)
     n <- base::nrow(dt)
     
-    # compute smoothed vectors
     mean_s   <- data.table::frollmean(dt[["mean"]],   n = k, align = "center")
     median_s <- data.table::frollmean(dt[["median"]], n = k, align = "center")
     q25_s    <- data.table::frollmean(dt[["q25"]],    n = k, align = "center")
     q75_s    <- data.table::frollmean(dt[["q75"]],    n = k, align = "center")
     
-    # fill edges with value at index 2501 and n-2500
     mean_s[1:half_window]   <- mean_s[half_window + 1L]
     median_s[1:half_window] <- median_s[half_window + 1L]
     q25_s[1:half_window]    <- q25_s[half_window + 1L]
@@ -57,7 +91,6 @@ make_per_position_plot <- function(perPosQuality, file_name) {
     df <- base::as.data.frame(dt)
   }
   
-  # ---- Plot ----
   ggplot2::ggplot(df, ggplot2::aes(x = position)) +
     ggplot2::geom_ribbon(
       ggplot2::aes(ymin = q25, ymax = q75),
@@ -86,11 +119,11 @@ make_per_position_plot <- function(perPosQuality, file_name) {
       panel.grid.minor.x = ggplot2::element_blank(),
       panel.grid.major.y = ggplot2::element_line(color = "grey90", linewidth = 0.3),
       panel.grid.minor.y = ggplot2::element_blank(),
-      axis.line          = ggplot2::element_line(color = "black", linewidth = 0.6),
-      axis.ticks         = ggplot2::element_line(color = "black", linewidth = 0.6),
-      plot.title         = ggplot2::element_text(face = "bold", hjust = 0),
-      plot.subtitle      = ggplot2::element_text(hjust = 0),
-      legend.position    = "none"
+      axis.line = ggplot2::element_line(color = "black", linewidth = 0.6),
+      axis.ticks = ggplot2::element_line(color = "black", linewidth = 0.6),
+      plot.title = ggplot2::element_text(face = "bold", hjust = 0),
+      plot.subtitle = ggplot2::element_text(hjust = 0),
+      legend.position = "none"
     ) +
     ggplot2::scale_x_continuous(
       labels = function(x) base::paste0(x / 1000, "k"),
@@ -102,3 +135,8 @@ make_per_position_plot <- function(perPosQuality, file_name) {
       expand = c(0, 0)
     )
 }
+
+make_per_position_plot(
+  perPosQuality,
+  "PBM60157_1pct Per-position Quality"
+)
