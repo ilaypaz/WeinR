@@ -63,10 +63,7 @@ QualMat <- function(qc_obj, stringset, filename){
   tmp <- cumsum(decreasinglengths)
   N50 <- decreasinglengths[which(tmp >= yield/2)[1]]
   
-  #N90
-  decreasinglengths <- sort(lengths, decreasing = TRUE)
-  tmp <- cumsum(decreasinglengths)
-  N90 <- decreasinglengths[which(tmp >= yield*0.9)[1]]
+
   
   #fill object
   
