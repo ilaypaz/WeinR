@@ -82,7 +82,6 @@ QualMat <- function(qc_obj, stringset, filename){
     `Read Count` = length(lengths),
     `Yield (bp)` = yield,
     N50 = N50,
-    N90 = N90,
     `Average Per Read Q Score` = avgQscore,
     `N Count` = sum(N),
     stringsAsFactors = FALSE
