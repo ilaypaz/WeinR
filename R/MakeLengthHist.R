@@ -45,3 +45,16 @@ make_length_plot <- function(readLengths, file_name) {
       axis.ticks = ggplot2::element_line(color = "black", linewidth = 0.6)
     )
 }
+
+bam_file <- "/Users/ilaypaz/Downloads/capstone/PBM60157_1pct.bam"
+
+bam_data <- Rsamtools::scanBam(
+  bam_file,
+  param = Rsamtools::ScanBamParam(
+    what = "seq"
+  )
+)
+
+read_lengths <- nchar(as.character(bam_data[[1]]$seq))
+
+make_length_plot(read_lengths, "PBM60157_1pct Read Length Distribution")
