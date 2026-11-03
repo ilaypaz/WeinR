@@ -104,7 +104,11 @@ QualPlot <- function(qc_obj,
       make_quality_vs_length_plot(metrics$readLengths, metrics$meanprQscore, file_name = filename),
       "q_vs_length"
     ),
-    per_pos_q    = save_png(make_per_position_plot(metrics$perPosQuality, file_name = filename), "per_pos_q")
+    per_pos_q    = save_png(make_per_position_plot(metrics$perPosQuality, file_name = filename), "per_pos_q"),
+    polyA_hist   = save_png(make_polyA_plot(metrics$polyALengths, file_name = filename), "polyA_hist"),
+    mod_density  = save_png(make_mod_density_plot(metrics$modDensity, file_name = filename), "mod_density"),
+    mod_read_mean = save_png(make_mod_mean_plot(metrics$modReadMeans, file_name = filename), "mod_read_mean"),
+    avg_ML       = save_png(make_avg_ML_plot(metrics$avgML, file_name = filename), "avg_ML")
   )
   
   qc_obj@plots[[filename]] <- out_paths
